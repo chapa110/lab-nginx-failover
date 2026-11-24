@@ -40,8 +40,9 @@ jobs:
 
       - name: Prueba 1 - round-robin con ambos backends
         run: |
-          echo "\$ docker exec maquina1 bash -c \"for i in \$(seq 1 6); do curl -s http://localhost/ | grep -o 'Respondió: maquina[2-3]'; done\""
-          docker exec maquina1 bash -c "for i in $(seq 1 6); do curl -s http://localhost/ | grep -o 'Respondió: maquina[2-3]'; done"
+          CMD='for i in $(seq 1 6); do curl -s http://localhost/ | grep -o "Respondió: maquina[2-3]"; done'
+          echo "\$ docker exec maquina1 bash -c '$CMD'"
+          docker exec maquina1 bash -c "$CMD"
 
       - name: Prueba 2 - failover (maquina3 caida)
         run: |
@@ -53,7 +54,8 @@ jobs:
           echo
           echo '$ docker stop maquina3'
           docker stop maquina3
-          echo "\$ docker exec maquina1 bash -c \"for i in \$(seq 1 6); do curl -s http://localhost/ | grep -o 'Respondió: maquina[2-3]'; done\""
-          docker exec maquina1 bash -c "for i in $(seq 1 6); do curl -s http://localhost/ | grep -o 'Respondió: maquina[2-3]'; done"
+          CMD='for i in $(seq 1 6); do curl -s http://localhost/ | grep -o "Respondió: maquina[2-3]"; done'
+          echo "\$ docker exec maquina1 bash -c '$CMD'"
+          docker exec maquina1 bash -c "$CMD"
           echo '$ docker start maquina3'
           docker start maquina3
