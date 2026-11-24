@@ -14,7 +14,7 @@ jobs:
           docker network create --subnet 192.168.56.0/24 lab_nginx_net
           for n in 2 3; do
             mkdir -p /tmp/m$n
-            echo "<h1>Respuesta desde maquina$n (192.168.56.1$n)</h1>" > /tmp/m$n/index.html
+            echo "<h1>Respondió: maquina$n (192.168.56.1$n)</h1>" > /tmp/m$n/index.html
             docker run -d --name maquina$n --network lab_nginx_net --ip 192.168.56.1$n \
               -v /tmp/m$n:/usr/share/nginx/html:ro nginx:alpine
           done
@@ -35,19 +35,25 @@ jobs:
           docker run -d --name maquina1 --network lab_nginx_net --ip 192.168.56.11 \
             -v /tmp/lb.conf:/etc/nginx/conf.d/default.conf:ro nginx:alpine
           sleep 3
-          docker exec maquina1 apk add --no-cache curl > /dev/null
+          docker exec maquina1 apk add --no-cache curl bash > /dev/null
           docker ps --format 'table {{.Names}}\t{{.Status}}'
 
       - name: Prueba 1 - round-robin con ambos backends
         run: |
-          echo '$ for i in 1 2 3 4 5 6; do docker exec maquina1 curl -s http://localhost; done'
-          for i in 1 2 3 4 5 6; do docker exec maquina1 curl -s http://localhost; done
+          echo "\$ docker exec maquina1 bash -c \"for i in \$(seq 1 6); do curl -s http://localhost/ | grep -o 'Respondió: maquina[2-3]'; done\""
+          docker exec maquina1 bash -c "for i in $(seq 1 6); do curl -s http://localhost/ | grep -o 'Respondió: maquina[2-3]'; done"
 
       - name: Prueba 2 - failover (maquina3 caida)
         run: |
+          echo "Con el propósito de evaluar la tolerancia a fallos y la alta disponibilidad de la infraestructura,"
+          echo "se simuló la caída de uno de los servidores de aplicación deteniendo el servicio en maquina3 (IP 192.168.56.13)."
+          echo "A continuación, se ejecutó un bucle de 6 peticiones HTTP consecutivas desde la máquina balanceadora (maquina1)"
+          echo "hacia el grupo upstream para verificar la capacidad de Nginx de detectar la inactividad del nodo"
+          echo "y reorientar el tráfico sin generar interrupciones al usuario final."
+          echo
           echo '$ docker stop maquina3'
           docker stop maquina3
-          echo '$ for i in 1 2 3 4 5 6; do docker exec maquina1 curl -s http://localhost; done'
-          for i in 1 2 3 4 5 6; do docker exec maquina1 curl -s http://localhost; done
+          echo "\$ docker exec maquina1 bash -c \"for i in \$(seq 1 6); do curl -s http://localhost/ | grep -o 'Respondió: maquina[2-3]'; done\""
+          docker exec maquina1 bash -c "for i in $(seq 1 6); do curl -s http://localhost/ | grep -o 'Respondió: maquina[2-3]'; done"
           echo '$ docker start maquina3'
           docker start maquina3
